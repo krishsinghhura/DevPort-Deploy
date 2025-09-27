@@ -1,0 +1,23 @@
+{
+  "name": "reverse-proxy",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build":"tsc -b",
+    "dev":"npm run build && node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "express": "^5.1.0",
+    "http-proxy": "^1.18.1",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/http-proxy": "^1.17.16"
+  }
+}
