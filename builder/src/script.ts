@@ -3,13 +3,16 @@ import path from "path";
 import fs from "fs";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import mime from "mime-types";
-// import Redis from "ioredis";
+import Redis from "ioredis";
 import dotenv from 'dotenv';
 dotenv.config();
 
-// const publisher = new Redis(process.env.REDIS_URL || "");
+const publisher = new Redis({
+  host: process.env.REDIS_URL,
+  port: 15646, 
+  password: process.env.REDIS_PASSWORD , 
+});
 
-// S3 client
 const s3Client = new S3Client({
   region: "ap-south-1",
   credentials: {
@@ -20,14 +23,14 @@ const s3Client = new S3Client({
 
 const PROJECT_ID = process.env.PROJECT_ID;
 
-// function publishLog(log: string) {
-//   if (!PROJECT_ID) return;
-//   publisher.publish(`logs:${PROJECT_ID}`, JSON.stringify({ log }));
-// }
+function publishLog(log: string) {
+  if (!PROJECT_ID) return;
+  publisher.publish(`logs:${PROJECT_ID}`, JSON.stringify({ log }));
+}
 
 async function init(): Promise<void> {
   console.log("Executing script.ts");
-  // publishLog("Build Started...");
+  publishLog("Build Started...");
 
   const outDirPath = '/home/app/output';
 
@@ -41,30 +44,30 @@ async function init(): Promise<void> {
   p.stdout.on("data", (data: Buffer) => {
     const message = data.toString();
     console.log(message);
-    // publishLog(message);
+    publishLog(message);
   });
 
   p.stderr?.on("data", (data: Buffer) => {
     const message = data.toString();
     console.error("Error:", message);
-    // publishLog(`error: ${message}`);
+    publishLog(`error: ${message}`);
   });
 
   p.on("close", async () => {
     console.log("Build Complete");
-    // publishLog("Build Complete");
+    publishLog("Build Complete");
 
     const distFolderPath = path.join(outDirPath, "dist");
     const distFolderContents = fs.readdirSync(distFolderPath, { recursive: true }) as string[];
 
-    // publishLog("Starting to upload");
+    publishLog("Starting to upload");
 
     for (const file of distFolderContents) {
       const filePath = path.join(distFolderPath, file);
       if (fs.lstatSync(filePath).isDirectory()) continue;
 
       console.log("uploading", filePath);
-      // publishLog(`uploading ${file}`);
+      publishLog(`uploading ${file}`);
 
       const command = new PutObjectCommand({
         Bucket: "devport-deploy",
@@ -75,16 +78,16 @@ async function init(): Promise<void> {
 
       await s3Client.send(command);
 
-      // publishLog(`uploaded ${file}`);
+      publishLog(`uploaded ${file}`);
       console.log("uploaded", filePath);
     }
 
-    // publishLog("Done");
+    publishLog("Done");
     console.log("Done...");
   });
 }
 
 init().catch((err) => {
   console.error("Script failed:", err);
-  // publishLog(`Script failed: ${err.message}`);
+  publishLog(`Script failed: ${err.message}`);
 });

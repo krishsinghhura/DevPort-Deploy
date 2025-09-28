@@ -9,19 +9,15 @@ const BASE_PATH =
 
 const proxy = httpProxy.createProxy();
 
-// Middleware to handle all requests
 app.use((req: Request, res: Response) => {
   const hostname = req.hostname;
   const subdomain = hostname.split(".")[0];
-
-  // Custom Domain - DB Query (placeholder)
 
   const resolvesTo = `${BASE_PATH}/${subdomain}`;
 
   proxy.web(req, res, { target: resolvesTo, changeOrigin: true });
 });
 
-// Handle proxyReq event
 proxy.on("proxyReq", (proxyReq, req, res) => {
   const url = (req as Request).url;
   if (url === "/") {

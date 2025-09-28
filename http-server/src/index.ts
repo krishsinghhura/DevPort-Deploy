@@ -4,53 +4,47 @@ import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
 import { Server } from "socket.io";
 import Redis from "ioredis";
 import dotenv from "dotenv";
+import http from "http";
 
 dotenv.config();
 
 const app = express();
+const httpServer = http.createServer(app);
 const PORT = 9000;
 
-// Redis subscriber
-// const subscriber = new Redis(""); // put your Redis connection URL here
+const subscriber = new Redis({
+  host: process.env.REDIS_URL,
+  port: 15646, 
+  password: process.env.REDIS_PASSWORD , 
+});
 
-// // Socket.io server
-// const io = new Server({
-//   cors: {
-//     origin: "*", // allow all origins
-//   },
-// });
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", 
+  },
+});
 
-// io.on("connection", (socket) => {
-//   socket.on("subscribe", (channel: string) => {
-//     socket.join(channel);
-//     socket.emit("message", `Joined ${channel}`);
-//   });
-// });
+io.on("connection", (socket) => {
+  socket.on("subscribe", (channel: string) => {
+    socket.join(channel);
+    socket.emit("message", `Joined ${channel}`);
+  });
+});
 
-import http from "http";
-
-// Create HTTP server for Socket.io
-// const socketServer = http.createServer();
-// io.listen(socketServer);
-
-// socketServer.listen(9002, () => {
-//   console.log("Socket Server running on port 9002");
-// });
-
-// ECS client
 const ecsClient = new ECSClient({
-  region: "ap-south-1", // e.g. "ap-south-1"
-  credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-    ? {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-      }
-    : undefined,
+  region: "ap-south-1", 
+  credentials:
+    process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+        }
+      : undefined,
 });
 
 const config = {
   CLUSTER: "arn:aws:ecs:ap-south-1:768238137421:cluster/builder-server",
-  TASK: "arn:aws:ecs:ap-south-1:768238137421:task-definition/builder-task",
+  TASK: "arn:aws:ecs:ap-south-1:768238137421:task-definition/final-task:1",
 };
 
 app.use(express.json());
@@ -64,7 +58,6 @@ app.post("/project", async (req: Request, res: Response) => {
   const { gitURL, slug } = req.body as ProjectRequestBody;
   const projectSlug = slug ? slug : generateSlug();
 
-  // Define ECS task
   const command = new RunTaskCommand({
     cluster: config.CLUSTER,
     taskDefinition: config.TASK,
@@ -73,14 +66,18 @@ app.post("/project", async (req: Request, res: Response) => {
     networkConfiguration: {
       awsvpcConfiguration: {
         assignPublicIp: "ENABLED",
-        subnets: ["subnet-007de0c4bf79d6daa", "subnet-08e9457a94ce2f6aa", "subnet-0785a9c97e5ab951b"], // replace with your subnet IDs
-        securityGroups: ["sg-0ff3803d9a3607fe2"], // replace with your security group ID(s)
+        subnets: [
+          "subnet-007de0c4bf79d6daa",
+          "subnet-08e9457a94ce2f6aa",
+          "subnet-0785a9c97e5ab951b",
+        ], 
+        securityGroups: ["sg-0ff3803d9a3607fe2"], 
       },
     },
     overrides: {
       containerOverrides: [
         {
-          name: "builder-server",
+          name: "final-task",
           environment: [
             { name: "GIT_REPOSITORY__URL", value: gitURL },
             { name: "PROJECT_ID", value: projectSlug },
@@ -90,26 +87,39 @@ app.post("/project", async (req: Request, res: Response) => {
     },
   });
 
-  await ecsClient.send(command);
+  try {
+    const response = await ecsClient.send(command);
+    console.log("ECS RunTask response:", JSON.stringify(response, null, 2));
 
-  return res.json({
-    status: "queued",
-    data: {
-      projectSlug,
-      url: `http://${projectSlug}.localhost:8000`,
-    },
-  });
+    if (response.failures && response.failures.length > 0) {
+      console.error("Task launch failures:", response.failures);
+      return res.status(500).json({ error: response.failures });
+    }
+
+    return res.json({
+      status: "queued",
+      data: {
+        projectSlug,
+        url: `http://${projectSlug}.localhost:8000`,
+        taskArn: response.tasks?.[0]?.taskArn,
+      },
+    });
+  } catch (err) {
+    console.error("ECS RunTask Error:", err);
+    return res.status(500).json({ error: err });
+  }
 });
 
-// // Subscribe to Redis logs
-// async function initRedisSubscribe() {
-//   console.log("Subscribed to logs....");
-//   await subscriber.psubscribe("logs:*");
-//   subscriber.on("pmessage", (_pattern, channel, message) => {
-//     io.to(channel).emit("message", message);
-//   });
-// }
+async function initRedisSubscribe() {
+  console.log("Subscribed to logs....");
+  await subscriber.psubscribe("logs:*");
+  subscriber.on("pmessage", (_pattern, channel, message) => {
+    io.to(channel).emit("message", message);
+  });
+}
 
-// initRedisSubscribe();
+initRedisSubscribe();
 
-app.listen(PORT, () => console.log(`API Server running on port ${PORT}`));
+httpServer.listen(PORT, () => {
+  console.log(`API + Socket.IO server running on port ${PORT}`);
+});
