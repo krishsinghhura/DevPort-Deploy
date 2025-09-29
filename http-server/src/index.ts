@@ -5,12 +5,15 @@ import { Server } from "socket.io";
 import Redis from "ioredis";
 import dotenv from "dotenv";
 import http from "http";
+import auth from "./routes/auth";
 
 dotenv.config();
 
 const app = express();
 const httpServer = http.createServer(app);
 const PORT = 9000;
+
+app.use("/auth",auth);
 
 const subscriber = new Redis({
   host: process.env.REDIS_URL,
@@ -54,7 +57,7 @@ interface ProjectRequestBody {
   slug?: string;
 }
 
-app.post("/project", async (req: Request, res: Response) => {
+app.post("/deploy", async (req: Request, res: Response) => {
   const { gitURL, slug } = req.body as ProjectRequestBody;
   const projectSlug = slug ? slug : generateSlug();
 
