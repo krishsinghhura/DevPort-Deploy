@@ -8,7 +8,7 @@ const prisma_1 = require("../../client/prisma");
 const crypto_js_1 = __importDefault(require("crypto-js"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authTypes_1 = require("../../validation/authTypes");
-const JWT_SECRET = process.env.JWT_SECRET || "";
+const JWT_SECRET = process.env.JWT_SECRET || "qwertyuiop";
 const signup = async (req, res) => {
     const { name, email, password } = req.body;
     const safeParseResult = authTypes_1.signUpSchema.safeParse(req.body);

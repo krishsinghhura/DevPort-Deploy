@@ -11,36 +11,34 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const redis_1 = require("./client/redis");
 const deployment_1 = __importDefault(require("./routes/deployment"));
 const deploymentWorker_1 = require("./worker/deploymentWorker");
+const logs_1 = __importDefault(require("./routes/logs"));
+const dashboard_1 = __importDefault(require("./routes/dashboard"));
+const cors_1 = __importDefault(require("cors"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const httpServer = http_1.default.createServer(app);
 const PORT = 9000;
+app.use((0, cors_1.default)({
+    origin: "http://localhost:8080", // allow your frontend
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"], // must include Content-Type
+}));
 const io = new socket_io_1.Server(httpServer, {
     cors: {
         origin: "*",
     },
 });
-// When a client connects
 io.on("connection", (socket) => {
-    socket.on("subscribe", async (channel) => {
+    socket.on("subscribe", (channel) => {
         socket.join(channel);
         socket.emit("message", `Joined ${channel}`);
-        // Extract project slug from channel
-        const projectSlug = channel.replace("logs:", "");
-        // Fetch recent logs from Redis list
-        try {
-            const recentLogs = await redis_1.subscriber.lrange(`logs-list:${projectSlug}`, 0, -1);
-            recentLogs.forEach((log) => socket.emit("message", log));
-        }
-        catch (err) {
-            console.error("Failed to fetch logs from Redis list:", err);
-            socket.emit("message", `Error fetching recent logs: ${err.message}`);
-        }
     });
 });
 app.use(express_1.default.json());
 app.use("/auth", auth_1.default);
 app.use("/deployment", deployment_1.default);
+app.use("/logs", logs_1.default);
+app.use("/dashboard", dashboard_1.default);
 // Subscribe to all Redis log channels
 async function initRedisSubscribe() {
     console.log("Subscribed to logs...");

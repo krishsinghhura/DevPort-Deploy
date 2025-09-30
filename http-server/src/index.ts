@@ -6,13 +6,23 @@ import auth from "./routes/auth";
 import { subscriber } from "./client/redis";
 import deployment from "./routes/deployment";
 import { startWorker } from "./worker/deploymentWorker";
-
+import logsRouter from "./routes/logs";
+import dashboardRouter from "./routes/dashboard";
+import cors from "cors";
 
 dotenv.config();
+
+
 
 const app = express();
 const httpServer = http.createServer(app);
 const PORT = 9000;
+
+app.use(cors({
+  origin: "http://localhost:8080",  // allow your frontend
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"], // must include Content-Type
+}));
 
 const io = new Server(httpServer, {
   cors: {
@@ -20,30 +30,20 @@ const io = new Server(httpServer, {
   },
 });
 
-// When a client connects
 io.on("connection", (socket) => {
-  socket.on("subscribe", async (channel: string) => {
+  socket.on("subscribe", (channel: string) => {
     socket.join(channel);
     socket.emit("message", `Joined ${channel}`);
-
-    // Extract project slug from channel
-    const projectSlug = channel.replace("logs:", "");
-
-    // Fetch recent logs from Redis list
-    try {
-      const recentLogs = await subscriber.lrange(`logs-list:${projectSlug}`, 0, -1);
-      recentLogs.forEach((log) => socket.emit("message", log));
-    } catch (err:any) {
-      console.error("Failed to fetch logs from Redis list:", err);
-      socket.emit("message", `Error fetching recent logs: ${err.message}`);
-    }
   });
 });
+
 
 app.use(express.json());
 
 app.use("/auth", auth);
 app.use("/deployment", deployment);
+app.use("/logs", logsRouter);
+app.use("/dashboard", dashboardRouter);
 
 // Subscribe to all Redis log channels
 async function initRedisSubscribe() {

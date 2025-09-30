@@ -8,7 +8,7 @@ export const deploy = async (req: Request, res: Response) => {
   const projectSlug = slug ?? generateSlug();
 
   // 🔹 Replace hardcoded user with real auth (placeholder for now)
-  const userId = (req as any).user?.id || "1234567890wertyuio";
+  const userId = (req as any).user?.userId;
 
   try {
     // 🔹 Upsert project (unique per ownerId + subDomain)

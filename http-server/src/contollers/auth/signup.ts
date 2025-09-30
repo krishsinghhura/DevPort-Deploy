@@ -4,7 +4,7 @@ import CryptoJS from "crypto-js";
 import jwt from "jsonwebtoken";
 import {signUpSchema} from "../../validation/authTypes"
 
-const JWT_SECRET=process.env.JWT_SECRET || "";
+const JWT_SECRET=process.env.JWT_SECRET || "qwertyuiop";
 
 export const signup = async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
