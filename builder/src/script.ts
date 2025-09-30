@@ -7,10 +7,11 @@ import Redis from "ioredis";
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Redis publisher
 const publisher = new Redis({
   host: process.env.REDIS_URL,
   port: 15646, 
-  password: process.env.REDIS_PASSWORD , 
+  password: process.env.REDIS_PASSWORD,
 });
 
 const s3Client = new S3Client({
@@ -23,9 +24,20 @@ const s3Client = new S3Client({
 
 const PROJECT_ID = process.env.PROJECT_ID;
 
+// Updated publishLog to also store logs in Redis list
 function publishLog(log: string) {
   if (!PROJECT_ID) return;
-  publisher.publish(`logs:${PROJECT_ID}`, JSON.stringify({ log }));
+
+  const channel = `logs:${PROJECT_ID}`;
+  const listKey = `logs-list:${PROJECT_ID}`;
+  const payload = JSON.stringify({ log, timestamp: Date.now() });
+
+  // Publish live log
+  publisher.publish(channel, payload);
+
+  // Store in Redis list for recent logs
+  publisher.rpush(listKey, payload);
+  publisher.ltrim(listKey, -1000, -1); // Keep last 1000 logs
 }
 
 async function init(): Promise<void> {
@@ -84,6 +96,7 @@ async function init(): Promise<void> {
 
     publishLog("Done");
     console.log("Done...");
+    process.exit(0);
   });
 }
 

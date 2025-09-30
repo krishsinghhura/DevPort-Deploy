@@ -1,11 +1,12 @@
-import express, { Request, Response } from "express";
-import { generateSlug } from "random-word-slugs";
-import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
+import express from "express";
 import { Server } from "socket.io";
-import Redis from "ioredis";
 import dotenv from "dotenv";
 import http from "http";
 import auth from "./routes/auth";
+import { subscriber } from "./client/redis";
+import deployment from "./routes/deployment";
+import { startWorker } from "./worker/deploymentWorker";
+
 
 dotenv.config();
 
@@ -13,110 +14,44 @@ const app = express();
 const httpServer = http.createServer(app);
 const PORT = 9000;
 
-app.use("/auth",auth);
-
-const subscriber = new Redis({
-  host: process.env.REDIS_URL,
-  port: 15646, 
-  password: process.env.REDIS_PASSWORD , 
-});
-
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", 
+    origin: "*",
   },
 });
 
+// When a client connects
 io.on("connection", (socket) => {
-  socket.on("subscribe", (channel: string) => {
+  socket.on("subscribe", async (channel: string) => {
     socket.join(channel);
     socket.emit("message", `Joined ${channel}`);
+
+    // Extract project slug from channel
+    const projectSlug = channel.replace("logs:", "");
+
+    // Fetch recent logs from Redis list
+    try {
+      const recentLogs = await subscriber.lrange(`logs-list:${projectSlug}`, 0, -1);
+      recentLogs.forEach((log) => socket.emit("message", log));
+    } catch (err:any) {
+      console.error("Failed to fetch logs from Redis list:", err);
+      socket.emit("message", `Error fetching recent logs: ${err.message}`);
+    }
   });
 });
-
-const ecsClient = new ECSClient({
-  region: "ap-south-1", 
-  credentials:
-    process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-      ? {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-        }
-      : undefined,
-});
-
-const config = {
-  CLUSTER: "arn:aws:ecs:ap-south-1:768238137421:cluster/builder-server",
-  TASK: "arn:aws:ecs:ap-south-1:768238137421:task-definition/final-task:1",
-};
 
 app.use(express.json());
 
-interface ProjectRequestBody {
-  gitURL: string;
-  slug?: string;
-}
+app.use("/auth", auth);
+app.use("/deployment", deployment);
 
-app.post("/deploy", async (req: Request, res: Response) => {
-  const { gitURL, slug } = req.body as ProjectRequestBody;
-  const projectSlug = slug ? slug : generateSlug();
-
-  const command = new RunTaskCommand({
-    cluster: config.CLUSTER,
-    taskDefinition: config.TASK,
-    launchType: "FARGATE",
-    count: 1,
-    networkConfiguration: {
-      awsvpcConfiguration: {
-        assignPublicIp: "ENABLED",
-        subnets: [
-          "subnet-007de0c4bf79d6daa",
-          "subnet-08e9457a94ce2f6aa",
-          "subnet-0785a9c97e5ab951b",
-        ], 
-        securityGroups: ["sg-0ff3803d9a3607fe2"], 
-      },
-    },
-    overrides: {
-      containerOverrides: [
-        {
-          name: "final-task",
-          environment: [
-            { name: "GIT_REPOSITORY__URL", value: gitURL },
-            { name: "PROJECT_ID", value: projectSlug },
-          ],
-        },
-      ],
-    },
-  });
-
-  try {
-    const response = await ecsClient.send(command);
-    console.log("ECS RunTask response:", JSON.stringify(response, null, 2));
-
-    if (response.failures && response.failures.length > 0) {
-      console.error("Task launch failures:", response.failures);
-      return res.status(500).json({ error: response.failures });
-    }
-
-    return res.json({
-      status: "queued",
-      data: {
-        projectSlug,
-        url: `http://${projectSlug}.localhost:8000`,
-        taskArn: response.tasks?.[0]?.taskArn,
-      },
-    });
-  } catch (err) {
-    console.error("ECS RunTask Error:", err);
-    return res.status(500).json({ error: err });
-  }
-});
-
+// Subscribe to all Redis log channels
 async function initRedisSubscribe() {
-  console.log("Subscribed to logs....");
+  console.log("Subscribed to logs...");
   await subscriber.psubscribe("logs:*");
+
   subscriber.on("pmessage", (_pattern, channel, message) => {
+    console.log("Redis message received:", { channel, message });
     io.to(channel).emit("message", message);
   });
 }
@@ -126,3 +61,5 @@ initRedisSubscribe();
 httpServer.listen(PORT, () => {
   console.log(`API + Socket.IO server running on port ${PORT}`);
 });
+
+startWorker();
