@@ -25,6 +25,7 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import axios from "axios";
+import {BASE_URL} from "@/config"
 
 const newProjectSchema = z.object({
   githubUrl: z
@@ -40,13 +41,14 @@ interface Project {
   name: string;
   subDomain: string;
   customDomain?: string | null;
-  Deployement: {
+  deployments: {
     id: string;
     status: string;
     createdAt: string;
     updatedAt: string;
   }[];
 }
+
 
 const Dashboard = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -69,7 +71,7 @@ const Dashboard = () => {
     }
 
     try {
-      const res = await axios.get("http://localhost:9000/dashboard", {
+      const res = await axios.get(`${BASE_URL}/dashboard`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -96,7 +98,7 @@ const Dashboard = () => {
   if (!token) return;
 
   try {
-    const res = await fetch("http://localhost:9000/deployment/deploy", {
+    const res = await fetch(`${BASE_URL}/deployment/deploy`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -132,24 +134,41 @@ const Dashboard = () => {
 };
 
 
-  // Compute stats
-  const stats = [
-    { label: "Total Projects", value: projects.length.toString(), icon: Globe },
-    {
-      label: "Active Deployments",
-      value: projects
-        .filter((p) => p.Deployement.some((d) => d.status === "IN_PROGRESS"))
-        .length.toString(),
-      icon: Activity,
-    },
-    {
-      label: "Total Deployments",
-      value: projects
-        .reduce((acc, p) => acc + p.Deployement.length, 0)
-        .toString(),
-      icon: Clock,
-    },
-  ];
+ // Helper
+const getLatestDeployment = (project: Project) => {
+  if (!project.deployments || project.deployments.length === 0) return null;
+  return [...project.deployments].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )[0];
+};
+
+// Stats
+const stats = [
+  { label: "Total Projects", value: projects.length.toString(), icon: Globe },
+  {
+    label: "Active Deployments",
+    value: projects.filter((p) => getLatestDeployment(p)?.status === "READY")
+      .length.toString(),
+    icon: Activity,
+  },
+  {
+    label: "Total Deployments",
+    value: projects.reduce((acc, p) => acc + (p.deployments?.length || 0), 0).toString(),
+    icon: Clock,
+  },
+  {
+    label: "Projects with Custom Domain",
+    value: projects.filter((p) => p.customDomain).length.toString(),
+    icon: Globe,
+  },
+];
+
+// Latest deployment date
+const latestDeploymentDate = projects
+  .flatMap((p) => p.deployments || [])
+  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+  ?.updatedAt;
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -213,15 +232,15 @@ const Dashboard = () => {
                         </h3>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            project.Deployement.some(
+                            project.deployments?.some(
                               (d) => d.status === "IN_PROGRESS"
                             )
                               ? "bg-warning/10 text-warning animate-glow"
                               : "bg-success/10 text-success"
                           }`}
                         >
-                          {project.Deployement.length &&
-                            project.Deployement[0].status}
+                          {project.deployments?.length &&
+                            project.deployments[0].status}
                         </span>
                       </div>
 
@@ -229,11 +248,11 @@ const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           Last deployed{" "}
-                          {project.Deployement[0]?.updatedAt || "N/A"}
+                          {project.deployments?.[0]?.updatedAt || "N/A"}
                         </div>
                         <div className="flex items-center gap-2">
                           <Activity className="h-4 w-4" />
-                          {project.Deployement.length} deployments
+                          {project.deployments?.length} deployments
                         </div>
                       </div>
 
@@ -248,7 +267,7 @@ const Dashboard = () => {
                       </a>
                     </div>
 
-                    <Link to={`/project/${project.subDomain}`}>
+                    <Link to={`/project/${project.subDomain}`}  state={{ project }}>
                       <Button variant="outline">View Details</Button>
                     </Link>
                   </div>

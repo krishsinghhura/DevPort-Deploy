@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Terminal, Search, Download } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
+import {BASE_URL} from "@/config"
 
 interface LogEntry {
   log: string;
@@ -26,7 +27,7 @@ const ProjectLogs = () => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:9000/logs/${slug}`, {
+        const res = await fetch(`${BASE_URL}/logs/${slug}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {

@@ -1,0 +1,12 @@
+devport-deploy.xyz → client
+*.devport-deploy.xyz → reverse-proxy
+devport-deploy.xyz/api → http-server
+
+
+devport-deploy.xyz → Point A record to your EC2 IP. This will handle the client and the http-server
+    if requests come to devport-deploy.xyz/* -> client
+    if requests come to devport-deploy.xyz/api/* -> http-server
+    -> This config will be done in NGNIX
+
+*.devport-deploy.xyz → Wildcard A record pointing to the same EC2 IP.
+    This will handle the reverse-proxy

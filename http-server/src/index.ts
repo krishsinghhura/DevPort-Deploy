@@ -40,10 +40,10 @@ io.on("connection", (socket) => {
 
 app.use(express.json());
 
-app.use("/auth", auth);
-app.use("/deployment", deployment);
-app.use("/logs", logsRouter);
-app.use("/dashboard", dashboardRouter);
+app.use("/api/auth", auth);
+app.use("/api/deployment", deployment);
+app.use("/api/logs", logsRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // Subscribe to all Redis log channels
 async function initRedisSubscribe() {

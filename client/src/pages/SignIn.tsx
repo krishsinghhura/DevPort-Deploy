@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Rocket } from "lucide-react";
 import { toast } from "sonner";
+import {BASE_URL} from "@/config"
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const SignIn = () => {
   setLoading(true);
 
   try {
-    const res = await fetch("http://localhost:9000/auth/signin", {
+    const res = await fetch(`${BASE_URL}/auth/signin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),

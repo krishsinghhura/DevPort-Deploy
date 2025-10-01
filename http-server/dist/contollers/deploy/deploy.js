@@ -44,7 +44,7 @@ const deploy = async (req, res) => {
             deployementId: deployment.id,
             userId,
         });
-        const baseDomain = process.env.BASE_DOMAIN || "localhost:8000";
+        const baseDomain = "localhost:8000";
         return res.json({
             status: "queued",
             projectSlug,
