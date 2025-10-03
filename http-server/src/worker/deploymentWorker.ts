@@ -1,11 +1,9 @@
-// src/worker.ts
 import { Worker, Job } from "bullmq";
 import { prisma } from "../client/prisma";
 import { ecsClient, config } from "../client/ecs";
 import { connection } from "../client/queue";
 import { RunTaskCommand, DescribeTasksCommand } from "@aws-sdk/client-ecs";
 
-// 🔹 Wait for ECS task to finish and determine final status
 async function waitForTask(taskArn: string): Promise<"READY" | "FAIL"> {
   console.log(`⏳ Waiting for ECS task to complete: ${taskArn}`);
   while (true) {
@@ -33,20 +31,17 @@ async function waitForTask(taskArn: string): Promise<"READY" | "FAIL"> {
   }
 }
 
-// 🔹 Start BullMQ worker for deployments
 export function startWorker() {
   const worker = new Worker(
     "deployments",
     async (job: Job) => {
       const { projectSlug, gitURL, deployementId } = job.data;
-      // 🔹 Update status to IN_PROGRESS
       await prisma.deployement.update({
         where: { id: deployementId },
         data: { status: "IN_PROGRESS" },
       });
 
       try {
-        // 🔹 Run ECS task
         const resp = await ecsClient.send(
           new RunTaskCommand({
             cluster: config.CLUSTER,
@@ -81,10 +76,8 @@ export function startWorker() {
         const taskArn = resp.tasks?.[0]?.taskArn;
         if (!taskArn) throw new Error("No task ARN returned from ECS");
 
-        // 🔹 Wait for ECS task to complete
         const finalStatus = await waitForTask(taskArn);
 
-        // 🔹 Update deployment status in DB
         await prisma.deployement.update({
           where: { id: deployementId },
           data: { status: finalStatus },

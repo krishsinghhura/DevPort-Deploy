@@ -20,7 +20,7 @@ model User {
   name      String
   email     String    @unique
   password  String
-  projects  Project[] // One user can have multiple projects
+  projects  Project[] // One user can have more than one project ofc
   createdAt DateTime  @default(now())
 }
 
@@ -37,7 +37,7 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([ownerId, subDomain]) // 🔹 composite uniqueness
+  @@unique([ownerId, subDomain]) //composite uniqueness
 }
 
 model Deployement {
