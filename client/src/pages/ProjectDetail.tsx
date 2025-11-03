@@ -49,7 +49,7 @@ const ProjectDetail = () => {
   const socketRef = useRef<Socket | null>(null);
 
   const projectGitURL = project?.gitURL || "#";
-  const projectUrl = `http://${slug}.localhost:8000`;
+  const projectUrl = `http://${slug}.devport-deploy.space`;
 
   // Fetch deployment history if project not passed via state
   useEffect(() => {

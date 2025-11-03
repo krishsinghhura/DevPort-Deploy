@@ -25,7 +25,7 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import axios from "axios";
-import {BASE_URL} from "@/config"
+import {BASE_URL,REVERSE_PROXY_URL} from "@/config"
 
 const newProjectSchema = z.object({
   githubUrl: z
@@ -256,8 +256,8 @@ const latestDeploymentDate = projects
                         </div>
                       </div>
 
-                      <a
-                        href={project.customDomain || project.subDomain}
+                      <a 
+                        href={`http://${(project.customDomain || project.subDomain)}.${REVERSE_PROXY_URL}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:text-primary-glow text-sm flex items-center gap-2 group-hover:underline"

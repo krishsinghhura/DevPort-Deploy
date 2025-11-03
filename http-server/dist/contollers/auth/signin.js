@@ -8,7 +8,7 @@ const prisma_1 = require("../../client/prisma");
 const crypto_js_1 = __importDefault(require("crypto-js"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authTypes_1 = require("../../validation/authTypes");
-const JWT_SECRET = process.env.JWT_SECRET || "";
+const JWT_SECRET = "qwertyuiop";
 const signin = async (req, res) => {
     const { email, password } = req.body;
     const safeParseResult = authTypes_1.signInSchema.safeParse(req.body);
@@ -21,6 +21,7 @@ const signin = async (req, res) => {
             return res.status(400).json({ message: "Invalid credentials" });
         const bytes = crypto_js_1.default.AES.decrypt(user.password, JWT_SECRET);
         const decryptedPassword = bytes.toString(crypto_js_1.default.enc.Utf8);
+        console.log(decryptedPassword);
         if (decryptedPassword !== password) {
             return res.status(400).json({ message: "Invalid credentials" });
         }

@@ -4,7 +4,7 @@ import CryptoJS from "crypto-js";
 import jwt from "jsonwebtoken";
 import { signInSchema } from "../../validation/authTypes";
 
-const JWT_SECRET = process.env.JWT_SECRET || "";
+const JWT_SECRET =  "qwertyuiop";
 
 export const signin = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -21,6 +21,8 @@ export const signin = async (req: Request, res: Response) => {
 
     const bytes = CryptoJS.AES.decrypt(user.password, JWT_SECRET);
     const decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
+    console.log(decryptedPassword);
+    
 
     if (decryptedPassword !== password) {
       return res.status(400).json({ message: "Invalid credentials" });

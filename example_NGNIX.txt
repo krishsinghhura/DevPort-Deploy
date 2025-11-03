@@ -1,0 +1,34 @@
+# Client & API server
+server {
+    listen 80;
+    server_name devport-deploy.space;
+
+    # API requests
+    location /api/ {
+        proxy_pass http://127.0.0.1:9000;  # your backend server port
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Frontend requests
+    location / {
+        proxy_pass http://127.0.0.1:8080;  # your frontend app port
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+# Reverse Proxy for subdomains
+server {
+    listen 80;
+    server_name *.devport-deploy.space;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;  # your reverse proxy port
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}

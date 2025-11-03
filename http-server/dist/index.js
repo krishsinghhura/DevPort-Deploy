@@ -35,10 +35,10 @@ io.on("connection", (socket) => {
     });
 });
 app.use(express_1.default.json());
-app.use("/auth", auth_1.default);
-app.use("/deployment", deployment_1.default);
-app.use("/logs", logs_1.default);
-app.use("/dashboard", dashboard_1.default);
+app.use("/api/auth", auth_1.default);
+app.use("/api/deployment", deployment_1.default);
+app.use("/api/logs", logs_1.default);
+app.use("/api/dashboard", dashboard_1.default);
 // Subscribe to all Redis log channels
 async function initRedisSubscribe() {
     console.log("Subscribed to logs...");

@@ -7,10 +7,8 @@ const queue_1 = require("../../client/queue");
 const deploy = async (req, res) => {
     const { gitURL, slug, name } = req.body;
     const projectSlug = slug ?? (0, random_word_slugs_1.generateSlug)();
-    // 🔹 Replace hardcoded user with real auth (placeholder for now)
     const userId = req.user?.userId;
     try {
-        // 🔹 Upsert project (unique per ownerId + subDomain)
         const project = await prisma_1.prisma.project.upsert({
             where: {
                 ownerId_subDomain: {
@@ -29,14 +27,12 @@ const deploy = async (req, res) => {
                 ownerId: userId,
             },
         });
-        // Insert a Deployement record with status QUEUED
         const deployment = await prisma_1.prisma.deployement.create({
             data: {
                 projectId: project.id,
                 status: "QUEUED",
             },
         });
-        // Add job to BullMQ queue
         await queue_1.deploymentQueue.add("deploy-job", {
             projectId: project.id,
             projectSlug,

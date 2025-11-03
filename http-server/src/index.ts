@@ -19,7 +19,7 @@ const httpServer = http.createServer(app);
 const PORT = 9000;
 
 app.use(cors({
-  origin: "http://localhost:8080",  // allow your frontend
+  origin: "http://localhost:8080",  // allow your frontend[http://devport-deploy.space/]
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"], // must include Content-Type
 }));
