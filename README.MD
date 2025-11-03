@@ -55,7 +55,7 @@ The **reverse proxy** makes the deployed apps accessible via subdomains.
 - Automatically appends `index.html` when a user visits `/`.
 
 **Example:**
-http://devport.localhost:8000 → https://devport-deploy.s3.ap-south-1.amazonaws.com/__outputs/devport/index.html
+http://devport.devport-deploy.xyz → https://devport-deploy.s3.ap-south-1.amazonaws.com/__outputs/devport/index.html
 
 
 So if a user deployed a project with slug = `devport`, it becomes instantly available at:
